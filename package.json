@@ -1,0 +1,14 @@
+{
+  "name": "hydra",
+  "version": "1.0.0",
+  "scripts": {
+    "start": ". ./env.sh && node index.js"
+  },
+  "dependencies": {
+    "joystick": "^0.1.2",
+    "serialport": "^4.0.7"
+  },
+  "repository": "https://github.com/jessetane/hydra",
+  "author": "jesse.tane@gmail.com",
+  "license": "MIT"
+}
