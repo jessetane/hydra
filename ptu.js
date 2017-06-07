@@ -1,6 +1,6 @@
 var Emitter = require('events')
 
-class PanTiltUnit extends Emitter {
+module.exports = class PanTiltUnit extends Emitter {
   constructor (serialPort) {
     super()
     this._ondata = this._ondata.bind(this)
