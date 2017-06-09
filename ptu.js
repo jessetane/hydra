@@ -4,9 +4,10 @@ module.exports = class PanTiltUnit extends Emitter {
   constructor (serialPort) {
     super()
     this._ondata = this._ondata.bind(this)
-    this._responseCallback = null
+    this._responseQueue = []
     this._responseBuffer = ''
     this._serialPort = serialPort
+    this._serialPort.on('data', this._ondata)
     this._serialPort.on('open', () => {
       this.ready = true
       this.emit('ready')
@@ -14,25 +15,25 @@ module.exports = class PanTiltUnit extends Emitter {
   }
 
   get busy () {
-    return this._responseCallback !== null
+    return this._responseQueue.length > 10
   }
 
   execute (command, cb) {
-    if (this._responseCallback) {
-      return cb(new Error('command in flight'))
-    }
-    this._responseCallback = cb
-    this._responseBuffer = ''
-    this._serialPort.on('data', this._ondata)
+    this._responseQueue.push(cb)
     this._serialPort.write(command + '\n', err => {
       if (err) {
-        this._responseCallback = null
-        cb(err)
+        var cb = this._responseQueue.shift()
+        if (cb) {
+          cb(err)
+        }
       }
     })
+    clearTimeout(this._responseTimeout)
     this._responseTimeout = setTimeout(() => {
-      this._responseCallback = null
-      cb(new Error('command timed out'))
+      var cb = this._responseQueue.shift()
+      if (cb) {
+        cb(new Error('command timed out'))
+      }
     }, 100)
   }
 
@@ -40,12 +41,13 @@ module.exports = class PanTiltUnit extends Emitter {
     this._responseBuffer += data.toString('ascii')
     var parts = this._responseBuffer.split('\n')
     if (parts.length > 2) {
+      this._responseBuffer = ''
       clearTimeout(this._responseTimeout)
-      this._serialPort.removeListener('data', this._ondata)
-      var cb = this._responseCallback
-      this._responseCallback = null
       var response = parts[1]
-      cb(null, response)
+      var cb = this._responseQueue.shift()
+      if (cb) {
+        cb(null, response)
+      }
     }
   }
 }
