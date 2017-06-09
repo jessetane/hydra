@@ -35,7 +35,13 @@ var ptu = new PanTiltUnit(
 )
 
 ptu.on('ready', () => {
-  main()
+  ptu.execute('C', err => {
+    ptu.execute('SPS20000', err => {
+      ptu.execute('STS20000', err => {
+        main()
+      })
+    })
+  })
 })
 
 ptu.on('close', () => {
