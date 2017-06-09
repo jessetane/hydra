@@ -53,7 +53,8 @@ function main () {
   joystick.on('axis', evt => {
     if (evt.number === 3) {
       joystick.pan = evt.value / joystickResolution
-      // TODO get tilt
+    } else if (evt.number === 4) {
+      joystick.tilt = -evt.value / joystickResolution
     }
   })
 
