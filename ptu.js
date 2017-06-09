@@ -39,10 +39,13 @@ module.exports = class PanTiltUnit extends Emitter {
   _ondata (data) {
     this._responseBuffer += data.toString('ascii')
     var parts = this._responseBuffer.split('\n')
-    if (parts.length > 1) {
+    if (parts.length > 2) {
+      clearTimeout(this._responseTimeout)
+      this._serialPort.removeListener('data', this._ondata)
       var cb = this._responseCallback
       this._responseCallback = null
-      cb(null, parts[0].split('* ')[1])
+      var response = parts[1]
+      cb(null, response)
     }
   }
 }
