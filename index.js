@@ -65,7 +65,7 @@ function main () {
     if (ptu.busy) {
       return
     }
-    if (i === axis.length) {
+    if (i === axes.length) {
       i = 0
     }
     var axis = axes[i++]
