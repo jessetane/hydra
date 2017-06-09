@@ -57,10 +57,13 @@ function main () {
   }
 
   joystick.on('axis', evt => {
+    var value = evt.value / joystickResolution
+    var valueAbsolute = Math.abs(value)
+    value *= valueAbsolute * valueAbsolute
     if (evt.number === 3) {
-      joystick.pan = evt.value / joystickResolution
+      joystick.pan = value
     } else if (evt.number === 4) {
-      joystick.tilt = -evt.value / joystickResolution
+      joystick.tilt = -value
     }
   })
 
