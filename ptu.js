@@ -4,9 +4,13 @@ module.exports = class PanTiltUnit extends Emitter {
   constructor (serialPort) {
     super()
     this._ondata = this._ondata.bind(this)
-    this._serialPort = serialPort
     this._responseCallback = null
     this._responseBuffer = ''
+    this._serialPort = serialPort
+    this._serialPort.on('open', () => {
+      this.ready = true
+      this.emit('ready')
+    })
   }
 
   get busy () {
