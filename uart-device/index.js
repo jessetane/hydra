@@ -12,6 +12,14 @@ module.exports = class UartDevice extends Emitter {
     this.buffer = ''
   }
 
+  get isOpen () {
+    return this.serialPort.isOpen()
+  }
+
+  get isBusy () {
+    return this.queue.length > 10
+  }
+
   open () {
     this.serialPort = new SerialPort(this.device, {
       baudRate: this.baudRate

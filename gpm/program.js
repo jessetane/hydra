@@ -18,18 +18,21 @@ module.exports = class GpmProgram {
     }
     this.input.open()
     this.output.open()
-    setInterval(this.onenterFrame, 1000 / 32)
+    this.onenterFrameInterval = setInterval(this.onenterFrame, 1000 / 32)
   }
 
   stop () {
-    clearInterval(this.onenterFrame)
+    clearInterval(this.onenterFrameInterval)
     this.running = false
     this.input.close()
     this.output.close()
   }
 
   onenterFrame () {
-    var euler = this.imu.ahrs.getEulerAngles()
+    if (!this.output.isOpen || this.output.isBusy) {
+      return
+    }
+    var euler = this.input.ahrs.getEulerAngles()
     this.output.roll = euler.roll
     this.output.pitch = euler.pitch
     this.output.yaw = euler.heading
