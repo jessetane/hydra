@@ -19,6 +19,7 @@ module.exports = class GpmProgram {
     this.input.open()
     this.output.open()
     this.onenterFrameInterval = setInterval(this.onenterFrame, 1000 / 32)
+    cb()
   }
 
   stop () {
