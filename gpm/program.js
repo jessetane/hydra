@@ -1,5 +1,5 @@
 var Imu = require('../imu')
-var Ptu = require('./')
+var Gpm = require('./')
 
 module.exports = class GpmProgram {
   constructor (config) {
