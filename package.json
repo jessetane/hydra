@@ -8,6 +8,7 @@
   "dependencies": {
     "ahrs": "^1.1.6",
     "gps": "^0.3.0",
+    "i2c-bus": "^1.2.2",
     "minimist": "^1.2.0",
     "rpc-engine": "^2.1.1",
     "serialport": "^4.0.7"
