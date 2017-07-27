@@ -52,7 +52,7 @@ var api = {
     cb(null, {
       program: {
         name: program ? program.name : null,
-        state: program && program.active ? 'active' : 'inactive'
+        state: program && program.running ? 'running' : 'stopped'
       }
     })
   },
@@ -77,6 +77,7 @@ var api = {
         } else {
           program = new Program(config)
         }
+        program.name = name
         program.start(cb)
       } else {
         cb(new Error('unknown program'))
