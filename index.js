@@ -31,7 +31,7 @@ if (configFile) {
 var programs = {
   // joystick: require('./joystick/program'),
   mouse: require('./mouse/program'),
-  // gpm: require('./gpm/program')
+  gpm: require('./gpm/program')
 }
 
 // the current program
