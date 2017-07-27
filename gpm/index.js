@@ -1,3 +1,3 @@
 module.exports = function (config) {
-  return new (require('./' + config.gpm.driver))(config)
+  return new (require('./' + config.ptu.driver))(config)
 }
