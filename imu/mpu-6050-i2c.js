@@ -24,9 +24,7 @@ var AFS_SEL = {
   '3': 16
 }
 
-var TWO_PI = Math.PI * 2
-
-class Mpu6050 extends I2cDevice {
+module.exports = class Mpu6050 extends I2cDevice {
   constructor (config) {
     super({
       busIndex: config.imu.device.split('-')[1],

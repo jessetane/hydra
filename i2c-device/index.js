@@ -1,7 +1,7 @@
 var Emitter = require('events')
 var I2cBus = require('i2c-bus')
 
-class I2cDevice extends Emitter {
+module.exports = class I2cDevice extends Emitter {
   constructor (opts) {
     super()
     this.busIndex = opts.busIndex
