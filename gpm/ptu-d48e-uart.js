@@ -11,6 +11,7 @@ module.exports = class Gpm extends UartDevice {
     this.execute('KL' + latitude, err => {
       if (err) {
         this.emit('error', err)
+        return
       }
       this.execute('KO' + longitude, err => {
         if (err) {
