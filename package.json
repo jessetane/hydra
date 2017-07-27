@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "bin": {
     "hydra": "index.js",
-    "hydractl": "src/cli/index.js"
+    "hydractl": "cli/index.js"
   },
   "dependencies": {
     "ahrs": "^1.1.6",
