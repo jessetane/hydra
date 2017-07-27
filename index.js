@@ -1,102 +1,175 @@
-var Joystick = require('joystick')
-var SerialPort = require('serialport')
-var PanTiltUnit = require('./ptu')
+#!/usr/bin/env node
 
-// setup joystick
-var joystickId = process.env.JOYSTICK_ID
-var joystickResolution = parseInt(process.env.JOYSTICK_RESOLUTION, 10)
-var joystickDeadzone = process.env.JOYSTICK_DEADZONE
-var joystickSensitivity = process.env.JOYSTICK_SENSITIVITY
-var joystick = new Joystick(
-  joystickId,
-  joystickDeadzone,
-  joystickSensitivity
-)
+var minimist = require('minimist')
+var os = require('os')
+var dgram = require('dgram')
+var Rpc = require('rpc-engine')
 
-joystick.pan = 0
-joystick.tilt = 0
+// parse arguments
+var argv = minimist(process.argv.slice(2))
 
-joystick.on('ready', () => {
-  joystick.ready = true
-  main()
-})
+// parse configuration file
+var config = null
+var configFile = argv.c || argv.config
+if (configFile) {
+  config = require(
+    configFile[0] !== '/'
+      ? `${process.cwd()}/${configFile}`
+      : configFile
+  )
+} else {
+  try {
+    config = require(
+      os.homedir() + '/.hydra.json'
+    )
+  } catch (err) {
+    config = require('/etc/hydra/config.json')
+  }
+}
 
-joystick.on('error', err => {
-  throw new Error('joystick error', err)
-})
+// available programs
+var programs = {
+  // joystick: require('./joystick/program'),
+  mouse: require('./mouse/program'),
+  // gpm: require('./gpm/program')
+}
 
-// setup pan tilt unit
-var ptuSeriaPort = process.env.PTU_SERIALPORT
-var ptuBaudRate = parseInt(process.env.PTU_BAUD_RATE, 10)
-var ptuMaxPanRate = parseInt(process.env.PTU_MAX_PAN_RATE, 10)
-var ptuMaxTiltRate = parseInt(process.env.PTU_MAX_TILT_RATE, 10)
-var ptu = new PanTiltUnit(
-  new SerialPort(ptuSeriaPort, { ptuBaudRate })
-)
+// the current program
+var program = null
 
-ptu.on('ready', () => {
-  ptu.execute('C', err => {
-    if (err) throw err
-    ptu.execute('SPS12000', err => {
-      if (err) throw err
-      ptu.execute('STS12000', err => {
-        if (err) throw err
-        main()
-      })
+// runtime api
+var api = {
+  'help': function (cb) {
+    cb(null, Object.keys(api).map(method => {
+      return {
+        method,
+        params: api[method].toString().split('(')[1].split(')')[0]
+      }
+    }))
+  },
+  'status': function (cb) {
+    if (typeof cb !== 'function') return
+    cb(null, {
+      program: {
+        name: program ? program.name : null,
+        state: program && program.active ? 'active' : 'inactive'
+      }
     })
-  })
-})
+  },
+  'ls': function (cb) {
+    if (typeof cb !== 'function') return
+    cb(null, Object.keys(programs))
+  },
+  'start': function (name, cb) {
+    if (typeof name === 'function') {
+      cb = name
+      name = null
+    }
+    if (typeof cb !== 'function') return
+    if (name) {
+      var Program = programs[name]
+      if (Program) {
+        if (program) {
+          if (program.name !== name) {
+            program.stop()
+            program = new Program(config)
+          }
+        } else {
+          program = new Program(config)
+        }
+        program.start(cb)
+      } else {
+        cb(new Error('unknown program'))
+      }
+    } else if (program) {
+      program.start(cb)
+    } else {
+      cb(new Error('program name required'))
+    }
+  },
+  'stop': function (cb) {
+    if (program) {
+      program.stop()
+    }
+    if (typeof cb === 'function') {
+      cb()
+    }
+  }
+}
 
-ptu.on('close', () => {
-  throw new Error('serial port disconnected')
-})
+// start up task queue
+var enqueued = 0
+function dequeue (err) {
+  if (err) throw err
+  if (--enqueued !== 0) return
+  console.log('hydra is ready')
+}
 
-// program
-function main () {
-  if (joystick.ready && ptu.ready) {
-    console.log('hydra is ready')
-  } else {
-    return
+// expose remote interface if configured
+// exposed via jsonrpc over udp
+if (config.remoteInterface) {
+  enqueued++
+
+  class Client extends Rpc {
+    constructor (opts) {
+      super()
+      this.port = opts.port
+      this.address = opts.address
+      this.methods = api
+    }
+
+    serialize (message) {
+      return new Buffer(JSON.stringify(message))
+    }
+
+    deserialize (message) {
+      return JSON.parse(message.toString('utf8'))
+    }
+
+    send (message) {
+      udpSocket.send(message, this.port, this.address)
+    }
   }
 
-  joystick.on('axis', evt => {
-    var value = evt.value / joystickResolution
-    var valueAbsolute = Math.abs(value)
-    value *= valueAbsolute * valueAbsolute
-    if (evt.number === 3) {
-      joystick.pan = value
-    } else if (evt.number === 4) {
-      joystick.tilt = -value
+  var udpSocket = dgram.createSocket('udp6')
+  var clients = {}
+
+  udpSocket.on('message', (message, sender) => {
+    var { address, port } = sender
+    var id = address + ':' + port
+    var client = clients[id]
+    if (!client) {
+      client = clients[id] = new Client({
+        address,
+        port
+      })
     }
+    client.onmessage(message)
   })
 
-  var axes = [ 'pan', 'tilt' ]
-  var i = 0
+  udpSocket.bind({
+    address: config.remoteInterface.address || '::1',
+    port: config.remoteInterface.port || 556677
+  }, err => {
+    if (err) {
+      console.error(`remote interface failed to bind ${address}:${port}`)
+    } else {
+      var { address, port } = udpSocket.address()
+      console.log(`remote interface bound to ${address}:${port}`)
+    }
+    dequeue()
+  })
+}
 
-  // control loop
-  setInterval(() => {
-    if (ptu.busy) {
-      return
+// start default program if specified
+if (config.defaultProgram) {
+  enqueued++
+  api.start(config.defaultProgram, err => {
+    if (err) {
+      console.error(err.message)
+    } else {
+      console.log(`${program.name} program started`)
     }
-    if (i === axes.length) {
-      i = 0
-    }
-    var axis = axes[i++]
-    var delta = 0
-    if (axis === 'pan') {
-      if (joystick.pan !== 0) {
-        delta = Math.round(joystick.pan * ptuMaxPanRate)
-        ptu.execute('PO' + delta, err => {
-          if (err) throw err
-        })
-      }
-    } else if (axis === 'tilt') {
-      if (joystick.tilt !== 0) {
-        delta = Math.round(joystick.tilt * ptuMaxTiltRate)
-        ptu.execute('TO' + delta, err => {
-          if (err) throw err
-        })
-      }
-    }
-  }, 0)
+    dequeue()
+  })
 }
