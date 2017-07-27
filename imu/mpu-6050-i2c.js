@@ -31,8 +31,8 @@ module.exports = class Mpu6050 extends I2cDevice {
       address: config.imu.address
     })
     this.sampleRate = config.imu.sampleRate
-    this.gyroscopeScale = config.imu.gyroscopeScale
-    this.accelerometerScale = config.imu.accelerometerScale
+    this.gyroscopeScale = config.imu.gyroscopeScale || 2
+    this.accelerometerScale = config.imu.accelerometerScale || 2
     this.sampleBuffer = new Buffer(14)
     this.accelerometer = {}
     this.gyroscope = {}
