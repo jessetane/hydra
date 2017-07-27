@@ -32,9 +32,14 @@ module.exports = class UartDevice extends Emitter {
     this.serialPort.removeListener('data', this.ondata)
     this.serialPort.removeListener('error', this.onerror)
     this.serialPort.close()
+    delete this.serialPort
   }
 
   execute (command, cb) {
+    if (!this.serialPort) {
+      cb(new Error('serial port is closed'))
+      return
+    }
     if (typeof cb !== 'function') {
       cb = function () {}
     }
