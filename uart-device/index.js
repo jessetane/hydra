@@ -35,31 +35,37 @@ module.exports = class UartDevice extends Emitter {
     delete this.serialPort
   }
 
-  execute (command, cb) {
-    if (!this.serialPort) {
-      cb(new Error('serial port is closed'))
-      return
-    }
-    if (typeof cb !== 'function') {
+  send (data, cb) {
+    if (cb && typeof cb !== 'function') {
       cb = function () {}
+    }
+    if (!this.serialPort) {
+      cb && cb(new Error('serial port is closed'))
+      return
     }
     if (!this.serialPort.isOpen()) {
       if (!this.serialPort.opening) {
         this.serialPort.open()
       }
-      cb(new Error('serial port is opening'))
+      cb && cb(new Error('serial port is opening'))
       return
     }
-    cb.timeout = setTimeout(() => {
-      this.queue.shift()
-      cb(new Error('command timed out'))
-    }, this.timeout)
-    this.queue.push(cb)
-    this.serialPort.write(command + this.separator, err => {
+    if (cb) {
+      cb.timeout = setTimeout(() => {
+        this.queue.shift()
+        cb(new Error('send timed out'))
+      }, this.timeout)
+      this.queue.push(cb)
+    }
+    this.serialPort.write(data + this.separator, err => {
       if (err) {
-        this.queue = this.queue.filter(_cb => _cb !== cb)
-        clearTimeout(cb.timeout)
-        cb(err)
+        if (cb) {
+          this.queue = this.queue.filter(_cb => _cb !== cb)
+          clearTimeout(cb.timeout)
+          cb(err)
+        } else {
+          this.emit('error', err)
+        }
       }
     })
   }

@@ -6,12 +6,20 @@
     "hydractl": "cli/index.js"
   },
   "dependencies": {
+    "3d": "github:jessetane/3d#1.0.0",
     "ahrs": "^1.1.6",
+    "browserify": "^14.4.0",
+    "ecstatic": "^2.2.1",
     "gps": "^0.3.0",
     "i2c-bus": "^1.2.2",
+    "loft": "github:jessetane/loft#1.0.3",
     "minimist": "^1.2.0",
+    "regl": "^1.2.1",
     "rpc-engine": "^2.1.1",
-    "serialport": "^4.0.7"
+    "serialport": "^4.0.7",
+    "uws": "^8.14.0",
+    "watchify": "^3.9.0",
+    "websocket-rpc": "github:jessetane/websocket-rpc#3.3.0"
   },
   "repository": "https://github.com/jessetane/hydra",
   "author": "jesse.tane@gmail.com",

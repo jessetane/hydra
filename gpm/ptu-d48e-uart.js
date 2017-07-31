@@ -8,12 +8,12 @@ module.exports = class Gpm extends UartDevice {
   }
 
   lookAt (latitude, longitude) {
-    this.execute('KL' + latitude, err => {
+    this.send('KL' + latitude, err => {
       if (err) {
         this.emit('error', err)
         return
       }
-      this.execute('KO' + longitude, err => {
+      this.send('KO' + longitude, err => {
         if (err) {
           this.emit('error', err)
         }
@@ -22,7 +22,7 @@ module.exports = class Gpm extends UartDevice {
   }
 
   set roll (position) {
-    this.execute('KR' + position, err => {
+    this.send('KR' + position, err => {
       if (err) {
         this.emit('error', err)
       }
@@ -30,7 +30,7 @@ module.exports = class Gpm extends UartDevice {
   }
 
   set pitch (position) {
-    this.execute('KP' + position, err => {
+    this.send('KP' + position, err => {
       if (err) {
         this.emit('error', err)
       }
@@ -38,7 +38,7 @@ module.exports = class Gpm extends UartDevice {
   }
 
   set yaw (position) {
-    this.execute('KH' + position, err => {
+    this.send('KH' + position, err => {
       if (err) {
         this.emit('error', err)
       }

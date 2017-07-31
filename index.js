@@ -31,7 +31,9 @@ if (configFile) {
 var programs = {
   // joystick: require('./joystick/program'),
   mouse: require('./mouse/program'),
-  gpm: require('./gpm/program')
+  gpm: require('./gpm/program'),
+  motioncal: require('./motioncal/program'),
+  gui: require('./gui/program')
 }
 
 // the current program
@@ -98,18 +100,12 @@ var api = {
   }
 }
 
-// start up task queue
-var enqueued = 0
-function dequeue (err) {
-  if (err) throw err
-  if (--enqueued !== 0) return
-  console.log('hydra is ready')
-}
+// track number of startup jobs
+var jobs = 1
 
-// expose remote interface if configured
-// exposed via jsonrpc over udp
+// expose remote interface via jsonrpc over udp
 if (config.remoteInterface) {
-  enqueued++
+  jobs++
 
   class Client extends Rpc {
     constructor (opts) {
@@ -158,19 +154,28 @@ if (config.remoteInterface) {
       var { address, port } = udpSocket.address()
       console.log(`remote interface bound to ${address}:${port}`)
     }
-    dequeue()
+    ready()
   })
 }
 
 // start default program if specified
 if (config.defaultProgram) {
-  enqueued++
+  jobs++
   api.start(config.defaultProgram, err => {
     if (err) {
       console.error(err.message)
     } else {
       console.log(`${program.name} program started`)
     }
-    dequeue()
+    ready()
   })
+}
+
+// go
+ready()
+
+function ready (err) {
+  if (err) throw err
+  if (--jobs !== 0) return
+  console.log('hydra is ready')
 }

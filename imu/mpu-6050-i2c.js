@@ -51,13 +51,14 @@ module.exports = class Mpu6050 extends I2cDevice {
     })
   }
 
-  open () {
-    super.open()
-  }
-
   close () {
     this.endCapture()
-    super.close()
+    this.wire.writeByte(this.address, PWR_MGMT_1, 0, err => {
+      if (err) {
+        this.emit('error', new Error('failed to put device to sleep'))
+      }
+      super.close()
+    })
   }
 
   initialize (cb) {

@@ -8,7 +8,7 @@ module.exports = class Ptu extends UartDevice {
   }
 
   set panOffset (offset) {
-    this.execute('PO' + offset, err => {
+    this.send('PO' + offset, err => {
       if (err) {
         this.emit('error', err)
       }
@@ -16,7 +16,7 @@ module.exports = class Ptu extends UartDevice {
   }
 
   set tiltOffset (offset) {
-    this.execute('TO' + offset, err => {
+    this.send('TO' + offset, err => {
       if (err) {
         this.emit('error', err)
       }

@@ -1,5 +1,5 @@
 {
-  "defaultProgram": "gpm",
+  "defaultProgram": "gui",
   "remoteInterface": {
     "address": "::1",
     "port": 55667
@@ -20,11 +20,15 @@
   "imu": {
     "driver": "mpu-6050-i2c",
     "device": "/dev/i2c-1",
-    "address": 104
+    "address": 104,
+    "sampleRate": 0
   },
   "gps": {
     "driver": "adafruit-ultimate-uart",
     "device": "/dev/serial0",
     "baudRate": 9600
+  },
+  "gui": {
+    "remote": "ws://192.168.2.11:8080"
   }
 }
