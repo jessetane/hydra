@@ -1,5 +1,5 @@
 # hydra
-Joystick control for a FLIR Systems PTU
+Dynamic position control programs and abstractions for their requisite I/O devices.
 
 ## Install
 ``` shell
