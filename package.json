@@ -16,11 +16,11 @@
     "minimist": "^1.2.0",
     "queue": "^4.2.1",
     "regl": "^1.2.1",
-    "rpc-engine": "^4.1.0",
+    "rpc-engine": "^4.1.2",
     "serialport": "^4.0.7",
     "uws": "^8.14.0",
     "watchify": "^3.9.0",
-    "websocket-rpc": "github:jessetane/websocket-rpc#4.0.2"
+    "websocket-rpc": "github:jessetane/websocket-rpc#4.1.1"
   },
   "repository": "https://github.com/jessetane/hydra",
   "author": "jesse.tane@gmail.com",
