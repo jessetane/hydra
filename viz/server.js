@@ -4,7 +4,7 @@ config.viz = config.viz || {}
 var port = config.viz.port || 5567
 var address = config.viz.address || '::1'
 var hydraUrl = config.viz.hydraUrl || 'ws://localhost:5566'
-var publicDirectory = `${__dirname}/../imu-viz`
+var publicDirectory = __dirname
 
 var fs = require('fs')
 var http = require('http')
