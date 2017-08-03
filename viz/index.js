@@ -50,23 +50,24 @@ var plane = new Plane()
 scene.addObject(plane)
 
 var server = new Rpc({
-  url: remote,
+  url: hydraUrl,
   serialize: JSON.stringify,
-  deserialize: JSON.parse,
-  methods: {
-    change: data => {
-      plane.rotation = [
-        data.quaternion.x,
-        data.quaternion.y,
-        data.quaternion.z,
-        data.quaternion.w
-      ]
-    }
-  }
+  deserialize: JSON.parse
 })
 
-server.onerror = err => {
+server.on('error', err => {
   console.error(err)
-}
+})
+
+server.on('open', () => {
+  server.subscribe('sensors.imu.change', imu => {
+    plane.rotation = [
+      imu.quaternion.x,
+      imu.quaternion.y,
+      imu.quaternion.z,
+      imu.quaternion.w
+    ]
+  })
+})
 
 server.connect()

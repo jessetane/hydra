@@ -1,0 +1,71 @@
+#!/usr/bin/env node
+
+var config = require('../config')
+config.geopoint = config.geopoint || {}
+var target = config.geopoint.target || {
+  latitude: 40.711301,
+  longitude: -73.932275,
+  altitude: 10.5
+}
+
+var hydraUrl = config.geopoint.hydraUrl || 'ws://localhost:5566'
+
+var WebSocket = require('uws')
+var Rpc = require('rpc-engine')
+var Queue = require('queue')
+
+var socket = new WebSocket(hydraUrl)
+
+var hydra = new Rpc()
+hydra.serialize = JSON.stringify
+hydra.deserialize = JSON.parse
+hydra.send = socket.send.bind(socket)
+socket.on('message', hydra.receive)
+
+socket.onerror = err => {
+  console.error(err)
+}
+
+socket.onopen = () => {
+  var readyState = {
+    rotation: false,
+    position: false
+  }
+  hydra.subscribe('sensors.imu.change', imu => {
+    // console.log('imu:', imu)
+    var q = new Queue({ concurrency: 1 })
+    q.push(cb => hydra.call('actuators.ptu.setRoll', imu.eulerAngles.roll, cb))
+    q.push(cb => hydra.call('actuators.ptu.setPitch', imu.eulerAngles.pitch, cb))
+    q.push(cb => hydra.call('actuators.ptu.setYaw', imu.eulerAngles.yaw, cb))
+    q.start(err => {
+      if (err) {
+        console.error('ptu:', err)
+      } else {
+        readyState.rotation = true
+      }
+    })
+  })
+  hydra.subscribe('sensors.gps.change', gps => {
+    // console.log('gps:', gps)
+    var q = new Queue({ concurrency: 1 })
+    q.push(cb => hydra.call('actuators.ptu.setLatitude', gps.latitude, cb))
+    q.push(cb => hydra.call('actuators.ptu.setLongitude', gps.longitude, cb))
+    q.push(cb => hydra.call('actuators.ptu.setAltitude', gps.altitude, cb))
+    q.start(err => {
+      if (err) {
+        console.error('ptu:', err)
+      } else {
+        readyState.position = true
+      }
+    })
+  })
+  setInterval(() => {
+    if (readyState.rotation && readyState.position) {
+      hydra.call('actuators.ptu.lookAt', target, err => {
+        if (err) {
+          console.error('ptu:', err)
+        }
+      })
+    }
+  }, 1000 / 60).unref()
+}

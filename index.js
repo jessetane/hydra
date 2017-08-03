@@ -1,181 +1,54 @@
 #!/usr/bin/env node
 
-var minimist = require('minimist')
-var os = require('os')
-var dgram = require('dgram')
+var config = require('./config')
+
+var port = config.port || 5566
+var address = config.address || '::'
+
+var ws = require('uws')
 var Rpc = require('rpc-engine')
+var Imu = require('./imu')
+var Gps = require('./gps')
+var Ptu = require('./ptu')
 
-// parse arguments
-var argv = minimist(process.argv.slice(2))
+var imu = new Imu(config)
+imu.on('open', () => console.log('imu: open'))
+imu.on('close', () => console.log('imu: close'))
+imu.on('error', err => console.error('imu:', err.message))
 
-// parse configuration file
-var config = null
-var configFile = argv.c || argv.config
-if (configFile) {
-  config = require(
-    configFile[0] !== '/'
-      ? `${process.cwd()}/${configFile}`
-      : configFile
-  )
-} else {
-  try {
-    config = require(
-      os.homedir() + '/.hydra.json'
-    )
-  } catch (err) {
-    config = require('/etc/hydra/config.json')
-  }
-}
+var gps = new Gps(config)
+gps.on('open', () => console.log('gps: open'))
+gps.on('close', () => console.log('gps: close'))
+gps.on('error', err => console.error('gps:', err.message))
 
-// available programs
-var programs = {
-  // joystick: require('./joystick/program'),
-  mouse: require('./mouse/program'),
-  gpm: require('./gpm/program'),
-  motioncal: require('./motioncal/program'),
-  gui: require('./gui/program')
-}
+var ptu = new Ptu(config)
+ptu.on('open', () => console.log('ptu: open'))
+ptu.on('close', () => console.log('ptu: close'))
+ptu.on('error', err => console.error('ptu:', err.message))
+ptu.open()
 
-// the current program
-var program = null
+var sensors = { imu, gps }
+var actuators = { ptu }
+var clients = {}
 
-// runtime api
-var api = {
-  'help': function (cb) {
-    cb(null, Object.keys(api).map(method => {
-      return {
-        method,
-        params: api[method].toString().split('(')[1].split(')')[0]
-      }
-    }))
-  },
-  'status': function (cb) {
-    if (typeof cb !== 'function') return
-    cb(null, {
-      program: {
-        name: program ? program.name : null,
-        state: program && program.running ? 'running' : 'stopped'
-      }
-    })
-  },
-  'ls': function (cb) {
-    if (typeof cb !== 'function') return
-    cb(null, Object.keys(programs))
-  },
-  'start': function (name, cb) {
-    if (typeof name === 'function') {
-      cb = name
-      name = null
-    }
-    if (typeof cb !== 'function') return
-    if (name) {
-      var Program = programs[name]
-      if (Program) {
-        if (program) {
-          if (program.name !== name) {
-            program.stop()
-            program = new Program(config)
-          }
-        } else {
-          program = new Program(config)
-        }
-        program.name = name
-        program.start(cb)
-      } else {
-        cb(new Error('unknown program'))
-      }
-    } else if (program) {
-      program.start(cb)
-    } else {
-      cb(new Error('program name required'))
-    }
-  },
-  'stop': function (cb) {
-    if (program) {
-      program.stop()
-    }
-    if (typeof cb === 'function') {
-      cb()
-    }
-  }
-}
-
-// track number of startup jobs
-var jobs = 1
-
-// expose remote interface via jsonrpc over udp
-if (config.remoteInterface) {
-  jobs++
-
-  class Client extends Rpc {
-    constructor (opts) {
-      super()
-      this.port = opts.port
-      this.address = opts.address
-      this.methods = api
-    }
-
-    serialize (message) {
-      return new Buffer(JSON.stringify(message))
-    }
-
-    deserialize (message) {
-      return JSON.parse(message.toString('utf8'))
-    }
-
-    send (message) {
-      udpSocket.send(message, this.port, this.address)
-    }
-  }
-
-  var udpSocket = dgram.createSocket('udp6')
-  var clients = {}
-
-  udpSocket.on('message', (message, sender) => {
-    var { address, port } = sender
-    var id = address + ':' + port
-    var client = clients[id]
-    if (!client) {
-      client = clients[id] = new Client({
-        address,
-        port
-      })
-    }
-    client.onmessage(message)
-  })
-
-  udpSocket.bind({
-    address: config.remoteInterface.address || '::1',
-    port: config.remoteInterface.port || 556677
-  }, err => {
-    if (err) {
-      console.error(`remote interface failed to bind ${address}:${port}`)
-    } else {
-      var { address, port } = udpSocket.address()
-      console.log(`remote interface bound to ${address}:${port}`)
-    }
-    ready()
-  })
-}
-
-// start default program if specified
-if (config.defaultProgram) {
-  jobs++
-  api.start(config.defaultProgram, err => {
-    if (err) {
-      console.error(err.message)
-    } else {
-      console.log(`${program.name} program started`)
-    }
-    ready()
-  })
-}
-
-// go
-ready()
-
-function ready (err) {
+var websocketServer = new ws.Server({ port, host: address }, err => {
   if (err) throw err
-  if (--jobs !== 0) return
-  console.log('hydra is ready')
-}
+  console.log(`websocket server listening at ${websocketServer.httpServer.address().port}`)
+  console.log(`hydra is ready`)
+})
+
+websocketServer.on('connection', socket => {
+  var client = new Rpc()
+  client.id = `${socket.remoteAddress}:${socket.remotePort}`
+  clients[client.id] = client
+  client.feeds.sensors = sensors
+  client.methods.actuators = actuators
+  client.serialize = JSON.stringify
+  client.deserialize = JSON.parse
+  client.send = socket.send.bind(socket)
+  socket.on('message', client.receive)
+  socket.on('close', () => {
+    client.close()
+    delete clients[client.id]
+  })
+})

@@ -1,5 +1,7 @@
 # hydra
-Dynamic position control programs and abstractions for their requisite I/O devices.
+Hardware abstraction over websockets.
+
+Just a sketch for now, see some example programs in `bin` directory.
 
 ## Install
 ``` shell
@@ -8,14 +10,8 @@ $ cp config.sample.json ~/.hydra.json # customize to suit
 ```
 
 ## Use
-Start hydra:
 ``` shell
-$ hydra
-```
-
-Interact with hydra at runtime:
-``` shell
-$ hydractl
+$ hydra [-c path/to/config/file]
 ```
 
 ## License

@@ -1,0 +1,45 @@
+#!/usr/bin/env node
+
+// for use with PJRC's MotionCal app: https://www.pjrc.com/store/prop_shield.html
+
+var config = require('../config')
+config.imuCalibrate = config.imuCalibrate || {}
+
+var hydraUrl = config.imuCalibrate.hydraUrl || 'ws://localhost:5566'
+var uartDevice = config.imuCalibrate.uartDevice
+
+var WebSocket = require('uws')
+var Uart = require('../device-uart')
+var Rpc = require('rpc-engine')
+
+var socket = new WebSocket(hydraUrl)
+
+var uart = new Uart({
+  device: uartDevice,
+  baudRate: 115200
+})
+
+var hydra = new Rpc()
+hydra.serialize = JSON.stringify
+hydra.deserialize = JSON.parse
+hydra.send = socket.send.bind(socket)
+socket.on('message', hydra.receive)
+
+socket.onerror = err => {
+  console.error(err)
+}
+
+uart.open(err => err && throw err)
+
+socket.onopen = () => {
+  hydra.subscribe('sensors.imu.change', imu => {
+    var a = imu.accelerometer.raw
+    var g = imu.gyroscope.raw
+    var m = imu.magnetometer.raw
+    uart.send(`Raw:${a.x},${a.y},${a.z},${g.x},${g.y},${g.z},${m.x},${m.y},${m.z}\r\n`, err => {
+      if (err) {
+        console.error(err)
+      }
+    })
+  })
+}

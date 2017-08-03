@@ -1,4 +1,4 @@
-var I2cDevice = require('../i2c-device')
+var I2cDevice = require('../device-i2c')
 var Ahrs = require('ahrs')
 
 // datasheets
@@ -34,84 +34,119 @@ module.exports = class Mpu6050 extends I2cDevice {
     this.gyroscopeScale = config.imu.gyroscopeScale || 2
     this.accelerometerScale = config.imu.accelerometerScale || 2
     this.sampleBuffer = new Buffer(14)
-    this.accelerometer = {}
-    this.gyroscope = {}
+    this.gyroscope = {
+      raw: {
+        x: 0,
+        y: 0,
+        z: 0
+      },
+      x: 0,
+      y: 0,
+      z: 0
+    }
+    this.accelerometer = {
+      raw: {
+        x: 0,
+        y: 0,
+        z: 0
+      },
+      x: 0,
+      y: 0,
+      z: 0
+    }
     this.ahrs = new Ahrs({
       sampleInterval: this.sampleRate,
-      algorithm: 'Madgwick'
-    })
-    this.on('open', () => {
-      this.initialize(err => {
-        if (err) {
-          this.emit('error', err)
-        } else {
-          this.beginCapture()
-        }
-      })
+      algorithm: 'Madgwick',
+      beta: 0.1
     })
   }
 
-  close () {
-    this.endCapture()
-    this.wire.writeByte(this.address, PWR_MGMT_1, 0, err => {
-      if (err) {
-        this.emit('error', new Error('failed to put device to sleep'))
-      }
-      super.close()
-    })
+  get quaternion () {
+    return this.ahrs.getQuaternion()
   }
 
-  initialize (cb) {
-    // take the device out of sleep mode and set the clock to use the x gyro as a reference
-    this.wire.writeByte(this.address, PWR_MGMT_1, 1, err => {
-      if (err) return cb(new Error('failed to configure clock'))
+  get eulerAngles () {
+    var angles = this.ahrs.getEulerAngles()
+    angles.yaw = angles.heading
+    delete angles.heading
+    return angles
+  }
+
+  _open (cb) {
+    super._open(() => {
+      var q = new Queue()
+      // take the device out of sleep mode and set the clock to use the x gyro as a reference
+      q.push(cb => this.wire.writeByte(this.address, PWR_MGMT_1, 1, cb))
       // set gyro full-scale range
-      this.wire.writeByte(this.address, GYRO_CONFIG, this.gyroscopeScale << 3, err => {
-        if (err) return cb(new Error('failed to configure gyroscope'))
-        // set accel full-scale range
-        this.wire.writeByte(this.address, ACCEL_CONFIG, this.accelerometerScale << 3, err => {
-          if (err) return cb(new Error('failed to configure accelerometer'))
-          cb()
-        })
+      q.push(cb => this.wire.writeByte(this.address, GYRO_CONFIG, this.gyroscopeScale << 3, cb))
+      // set accel full-scale range
+      q.push(cb => this.wire.writeByte(this.address, ACCEL_CONFIG, this.accelerometerScale << 3, cb))
+      q.start(err => {
+        if (err) return cb(err)
+        clearInterval(this.sampleInterval)
+        this.sampleInterval = setInterval(this.onsampleNeeded.bind(this), 1000 / this.sampleRate)
+        this.lastUpdate = null
+        cb()
+        this.emit('open')
       })
     })
   }
 
-  beginCapture () {
+  _close (cb) {
+    clearInterval(this.sampleInterval)
+    this.wire.writeByte(this.address, PWR_MGMT_1, 0, err => {
+      super._close(err2 => {
+        if (err && err2) {
+          err = [err, err2]
+        } else if (err2) {
+          err = err2
+        }
+        cb(err)
+      })
+    })
+  }
+
+  onsampleNeeded () {
     var buffer = this.sampleBuffer
     var int16Scale = 32767
     var gyroscopeScale = FS_SEL[this.gyroscopeScale] / 360 * Math.PI * 2
     var accelerometerScale = AFS_SEL[this.accelerometerScale]
-    var lastUpdate = null
-    this.sampleInterval = setInterval(() => {
-      this.wire.readI2cBlock(this.address, ACCEL_XOUT_H, 14, buffer, err => {
-        if (err) {
-          this.emit('error', new Error('failed to read sensor data'))
-        } else {
-          var gyro = this.gyroscope = {
-            x: buffer.readInt16BE(8) / int16Scale * gyroscopeScale,
-            y: buffer.readInt16BE(10) / int16Scale * gyroscopeScale,
-            z: buffer.readInt16BE(12) / int16Scale * gyroscopeScale
-          }
-          var accel = this.accelerometer = {
-            x: buffer.readInt16BE(0) / int16Scale * accelerometerScale,
-            y: buffer.readInt16BE(2) / int16Scale * accelerometerScale,
-            z: buffer.readInt16BE(4) / int16Scale * accelerometerScale
-          }
-          var now = +new Date()
-          this.ahrs.update(
-            gyro.x, gyro.y, gyro.z,
-            accel.x, accel.y, accel.z,
-            0, 0, 0, // XXX need module with compass
-            (now - (lastUpdate || now)) / 1000
-          )
-          lastUpdate = now
-        }
+    this.wire.readI2cBlock(this.address, ACCEL_XOUT_H, 14, buffer, err => {
+      if (err) {
+        this.emit('error', err)
+        return
+      }
+      // gyro raw
+      this.gyroscope.raw.x =  buffer.readInt16BE(8)
+      this.gyroscope.raw.y = buffer.readInt16BE(10)
+      this.gyroscope.raw.z = buffer.readInt16BE(12)
+      // gyro scaled
+      this.gyroscope.x = this.gyroscope.raw.x / int16Scale * gyroscopeScale
+      this.gyroscope.x = this.gyroscope.raw.x / int16Scale * gyroscopeScale
+      this.gyroscope.x = this.gyroscope.raw.x / int16Scale * gyroscopeScale
+      // accel raw
+      this.accelerometer.raw.x = buffer.readInt16BE(0)
+      this.accelerometer.raw.y = buffer.readInt16BE(2)
+      this.accelerometer.raw.z = buffer.readInt16BE(4)
+      // accel scaled
+      this.accelerometer.x = this.accelerometer.raw.x / int16Scale * accelerometerScale
+      this.accelerometer.y = this.accelerometer.raw.y / int16Scale * accelerometerScale
+      this.accelerometer.z = this.accelerometer.raw.z / int16Scale * accelerometerScale
+      // ahrs
+      var now = +new Date()
+      this.ahrs.update(
+        gyro.x, gyro.y, gyro.z,
+        accel.x, accel.y, accel.z,
+        0, 0, 0, // XXX need module with compass
+        (now - (this.lastUpdate || now)) / 1000
+      )
+      this.lastUpdate = now
+      this.emit('change', {
+        quaternion: this.quaternion,
+        eulerAngles: this.eulerAngles,
+        gyroscope: this.gyroscope,
+        accelerometer: this.accelerometer
       })
-    }, 1000 / this.sampleRate)
-  }
-
-  endCapture () {
-    clearInterval(this.sampleInterval)
+    })
   }
 }

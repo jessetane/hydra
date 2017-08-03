@@ -1,21 +1,11 @@
 {
-  "defaultProgram": "gui",
-  "remoteInterface": {
-    "address": "::1",
-    "port": 55667
-  },
   "joystick": {
     "driver": "linux",
     "device": "/dev/input/js1"
   },
   "mouse": {
     "driver": "linux",
-    "device": "/dev/input/mouse0"
-  },
-  "ptu": {
-    "driver": "ptu-d48e-uart",
-    "device": "/dev/tty.usbserial0",
-    "baudRate": 9600
+    "device": "/dev/input/mice"
   },
   "imu": {
     "driver": "mpu-6050-i2c",
@@ -28,7 +18,18 @@
     "device": "/dev/serial0",
     "baudRate": 9600
   },
-  "gui": {
-    "remote": "ws://192.168.2.11:8080"
+  "ptu": {
+    "driver": "ptu-d48e-uart",
+    "device": "/dev/tty.usbserial0",
+    "baudRate": 9600
+  },
+  "imuCalibrate": {
+    "hydraUrl": "ws://10.0.0.2:5566",
+  },
+  "imuViz": {
+    "hydraUrl": "ws://10.0.0.2:5566"
+  },
+  "geopoint": {
+    "hydraUrl": "ws://192.168.2.11:5566"
   }
 }
