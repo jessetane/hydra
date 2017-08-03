@@ -24,7 +24,7 @@
     "baudRate": 9600
   },
   "imuCalibrate": {
-    "hydraUrl": "ws://10.0.0.2:5566",
+    "hydraUrl": "ws://10.0.0.2:5566"
   },
   "imuViz": {
     "hydraUrl": "ws://10.0.0.2:5566"

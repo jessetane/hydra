@@ -125,7 +125,7 @@ module.exports = class AdafruitUltimateGps extends UartDevice {
                   cb(new Error('device unresponsive at all baud rates'))
                   return
                 }
-                q.unshift(this.findAndSetBaudRate.bind(this, q, i))
+                q.unshift(this.negotiateBaudRate.bind(this, q, i))
               }
               cb()
             })
