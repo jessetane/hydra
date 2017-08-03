@@ -2,13 +2,13 @@
 
 var config = require('../config')
 config.geopoint = config.geopoint || {}
+
+var hydraUrl = config.geopoint.hydraUrl || 'ws://localhost:5566'
 var target = config.geopoint.target || {
   latitude: 40.711301,
   longitude: -73.932275,
   altitude: 10.5
 }
-
-var hydraUrl = config.geopoint.hydraUrl || 'ws://localhost:5566'
 
 var WebSocket = require('uws')
 var Rpc = require('rpc-engine')
