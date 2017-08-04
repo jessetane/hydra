@@ -1,48 +1,32 @@
-var Emitter = require('events')
+var Device = require('../device')
 var fs = require('fs')
 
-module.exports = class Mouse extends Emitter {
+module.exports = class Mouse extends Device {
   constructor (config) {
     super()
     this.device = config.mouse.device
-    this.buffer = new Buffer(8)
+    this.sampleBuffer = new Buffer(8)
   }
 
-  open () {
-    this.ensureOpenInterval = setInterval(() => {
-      if (!this.input && !this.opening) {
-        this._open()
-      }
-    }, 1000)
-    this._open()
-  }
-
-  _open () {
-    this.opening = true
+  _open (cb) {
     fs.open(this.device, 'r', (err, fd) => {
-      this.opening = false
-      if (err) {
-        this.emit('error', err)
-      } else {
-        this.input = fd
-        this.poll()
-      }
+      if (err) return cb(err)
+      this.fileDescriptor = fd
+      this.poll()
+      cb()
     })
   }
 
   poll () {
-    fs.read(this.input, this.buffer, 0, 8, null, err => {
+    var buffer = this.sampleBuffer
+    fs.read(this.fileDescriptor, buffer, 0, 8, null, err => {
       if (err) {
-        if (this.input) {
-          this.emit('error', err)
-          this.input = null
-          this._open()
-        }
+        delete this.fileDescriptor
         return
       }
-      var x = this.buffer.readInt8(1)
-      var y = this.buffer.readInt8(2)
-      var buttons = this.buffer[0]
+      var x = buffer.readInt8(1)
+      var y = buffer.readInt8(2)
+      var buttons = buffer[0]
       buttons = {
         left: buttons & 0x1,
         middle: buttons & 0x4,
@@ -53,10 +37,17 @@ module.exports = class Mouse extends Emitter {
     })
   }
 
-  close () {
-    clearInterval(this.ensureOpenInterval)
-    var input = this.input
-    this.input = null
-    fs.close(input)
+  _close (cb) {
+    var fd = this.fileDescriptor
+    this.fileDescriptor = null
+    fs.close(fd, cb)
+  }
+
+  watchdog (cb) {
+    if (!this.fileDescriptor) {
+      cb(new Error('device not open'))
+    } else {
+      cb()
+    }
   }
 }

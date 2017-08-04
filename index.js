@@ -7,9 +7,21 @@ var address = config.address || '::'
 
 var ws = require('uws')
 var Rpc = require('rpc-engine')
+var Joystick = require('./joystick')
+var Mouse = require('./mouse')
 var Imu = require('./imu')
 var Gps = require('./gps')
 var Ptu = require('./ptu')
+
+var joystick = new Joystick(config)
+joystick.on('open', () => console.log('joystick: open'))
+joystick.on('close', () => console.log('joystick: close'))
+joystick.on('error', err => console.error('joystick:', err.message))
+
+var mouse = new Mouse(config)
+mouse.on('open', () => console.log('mouse: open'))
+mouse.on('close', () => console.log('mouse: close'))
+mouse.on('error', err => console.error('mouse:', err.message))
 
 var imu = new Imu(config)
 imu.on('open', () => console.log('imu: open'))
@@ -27,7 +39,7 @@ ptu.on('close', () => console.log('ptu: close'))
 ptu.on('error', err => console.error('ptu:', err.message))
 ptu.open()
 
-var sensors = { imu, gps }
+var sensors = { joystick, mouse, imu, gps }
 var actuators = { ptu }
 var clients = {}
 
