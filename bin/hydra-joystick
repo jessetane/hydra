@@ -1,1 +1,65 @@
-# TODO
+#!/usr/bin/env node
+
+var config = require('../config')
+config.joystick = config.joystick || {}
+config.ptu = config.ptu || {}
+
+var hydraUrl = config.joystick.hydraUrl || 'ws://localhost:5566'
+var frameRate = config.joystick.frameRate || 60
+var joystickResolution = config.joystick.resolution || 32768
+var joystickDeadzone = config.joystick.deadzone || 8
+var ptuMaxPanRate = config.ptu.maxPanRate || 12000
+var ptuMaxTiltRate = config.ptu.maxTiltRate || 12000
+
+var WebSocket = require('uws')
+var Rpc = require('rpc-engine')
+
+var socket = new WebSocket(hydraUrl)
+var mainLoop = null
+var joystick = {
+  pan: 0,
+  tilt: 0
+}
+
+var hydra = new Rpc()
+hydra.serialize = JSON.stringify
+hydra.deserialize = JSON.parse
+hydra.send = socket.send.bind(socket)
+socket.on('message', hydra.receive)
+
+socket.onerror = err => console.error(err)
+
+socket.onclose = () => {
+  clearInterval(mainLoop)
+  hydra.close()
+}
+
+socket.onopen = () => {
+  joystick.pan = 0
+  joystick.tilt = 0
+  mainLoop = setInterval(main, 1000 / frameRate)
+  hydra.subscribe('sensors.joystick.change', evt => {
+    // respect deadzone
+    if (Math.abs(value) < joystickDeadzone) value = 0
+    // compute proportional delta
+    var value = evt.value / joystickResolution
+    var valueAbsolute = Math.abs(value)
+    value *= valueAbsolute * valueAbsolute
+    // save computed delta for the correct axis
+    // 3 means x axis, right stick so pan
+    // 4 means y axis, right stick so tilt
+    if (evt.number === 3) {
+      joystick.pan = Math.round(value * ptuMaxPanRate)
+    } else if (evt.number === 4) {
+      joystick.tilt = Math.round(-value * ptuMaxTiltRate)
+    }
+  })
+}
+
+function main () {
+  hydra.call('actuators.ptu.setPanTiltOffset', joystick.pan, joystick.tilt, err => {
+    if (err) {
+      console.error(err)
+    }
+  })
+}

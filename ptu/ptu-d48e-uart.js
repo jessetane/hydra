@@ -22,6 +22,13 @@ module.exports = class Ptu extends UartDevice {
     this.send('TO' + offset, 'TO', cb)
   }
 
+  setPanTiltOffset (panOffset, tiltOffset, cb) {
+    this.setPanOffset(panOffset, err => {
+      if (err) return cb(err)
+      this.setTiltOffset(tiltOffset, cb)
+    })
+  }
+
   setRoll (roll, cb) {
     this.send('KR' + roll, 'KR', cb)
   }
