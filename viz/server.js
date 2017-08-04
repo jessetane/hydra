@@ -30,9 +30,10 @@ browserify.on('update', () => {
     .pipe(file)
   function done (err) {
     if (err) {
-      err.message = 'error building javascript: ' + (err.annotated ? err.annotated.slice(1) : err.message)
+      console.log('error building javascript: ' + (err.annotated ? err.annotated.slice(1) : err.message))
+    } else {
+      console.log('javascript built successfully')
     }
-    console.log('javascript built successfully')
   }
 })
 
