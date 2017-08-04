@@ -26,12 +26,15 @@ var CTRL_REG2 = 0x2b
 var M_CTRL_REG1 = 0x5b
 var M_CTRL_REG2 = 0x5c
 
+var M_OFF_X_MSB = 0x3F
+
 module.exports = class Fxos8700cq extends I2cDevice {
   constructor (config) {
     super({
       busIndex: config.imu.device.split('-')[1],
       address: config.imu.accelerometerAddress || 0x1f
     })
+    this.magnetometerOffset = config.imu.magnetometerOffset
     this.accelerometerScaleRange = parseInt(config.imu.accelerometerScaleRange || 8, 10)
     this.sampleRate = parseInt(config.imu.accelerometerSampleRate || 400, 10)
     this.sampleBuffer = new Buffer(12)
@@ -64,10 +67,21 @@ module.exports = class Fxos8700cq extends I2cDevice {
       q.push(cb => this.bus.writeByte(this.address, CTRL_REG2, 0b01000000, () => setTimeout(cb, 10)))
       // configure accelerometer scale range
       q.push(cb => this.bus.writeByte(this.address, XYZ_DATA_CFG, XYZ_DATA_CFG_FS[this.accelerometerScaleRange], cb))
-      // enable magnetometer, use autocalibration and max out oversample rate
-      q.push(cb => this.bus.writeByte(this.address, M_CTRL_REG1, 0b10011111, cb))
       // jump to magnetometer registers after reading accelerometer registers so they can be read in one shot
       q.push(cb => this.bus.writeByte(this.address, M_CTRL_REG2, 0b00100000, cb))
+      // hybrid mode, disable autocalibration and max out oversample rate
+      q.push(cb => this.bus.writeByte(this.address, M_CTRL_REG1, 0b00011111, cb))
+      // write initial magnetometer offsets (if they have been pre-calibrated)
+      if (this.magnetometerOffset) {
+        var buffer = this.sampleBuffer
+        buffer[0] = this.magnetometerOffset.x >> 7
+        buffer[1] = this.magnetometerOffset.x << 1 & 0xFF
+        buffer[2] = this.magnetometerOffset.y >> 7
+        buffer[3] = this.magnetometerOffset.y << 1 & 0xFF
+        buffer[4] = this.magnetometerOffset.z >> 7
+        buffer[5] = this.magnetometerOffset.z << 1 & 0xFF
+        q.push(cb => this.bus.writeI2cBlock(this.address, M_OFF_X_MSB, 6, buffer, cb))
+      }
       // high resolution/power mode
       q.push(cb => this.bus.writeByte(this.address, CTRL_REG2, 0b00000010, cb))
       // set sample rate and bring device out of standby
@@ -113,6 +127,22 @@ module.exports = class Fxos8700cq extends I2cDevice {
       this.magnetometer.y = this.magnetometer.raw.y
       this.magnetometer.z = this.magnetometer.raw.z
       cb()
+    })
+  }
+
+  readMagnetometerOffset (cb) {
+    var buffer = new Buffer(6)
+    this.bus.readI2cBlock(this.address, M_OFF_X_MSB, 6, buffer, err => {
+      if (err) return cb(err)
+      // mag offset data is BE 15 bit 2's complement
+      var offx = buffer.readInt8(0) << 7 | buffer.readUInt8(1) >> 1
+      var offy = buffer.readInt8(2) << 7 | buffer.readUInt8(3) >> 1
+      var offz = buffer.readInt8(4) << 7 | buffer.readUInt8(5) >> 1
+      cb(null, {
+        x: offx,
+        y: offy,
+        z: offz
+      })
     })
   }
 }
