@@ -54,11 +54,6 @@ module.exports = class Mpu6050 extends I2cDevice {
       y: 0,
       z: 0
     }
-    this.ahrs = new Ahrs({
-      sampleInterval: this.sampleRate,
-      algorithm: 'Madgwick',
-      beta: 0.1
-    })
   }
 
   get quaternion () {
@@ -74,7 +69,7 @@ module.exports = class Mpu6050 extends I2cDevice {
 
   _open (cb) {
     super._open(() => {
-      var q = new Queue()
+      var q = new Queue({ concurrency: 1 })
       // take the device out of sleep mode and set the clock to use the x gyro as a reference
       q.push(cb => this.wire.writeByte(this.address, PWR_MGMT_1, 1, cb))
       // set gyro full-scale range
@@ -86,6 +81,11 @@ module.exports = class Mpu6050 extends I2cDevice {
         clearInterval(this.sampleInterval)
         this.sampleInterval = setInterval(this.onsampleNeeded.bind(this), 1000 / this.sampleRate)
         this.lastUpdate = null
+        this.ahrs = new Ahrs({
+          sampleInterval: this.sampleRate,
+          algorithm: 'Madgwick',
+          beta: 0.1
+        })
         cb()
         this.emit('open')
       })

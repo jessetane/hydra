@@ -12,11 +12,6 @@ module.exports = class AdafruitPrecisionNxp extends Device {
     this.accelerometer.on('error', err => this.emit('error', err))
     this.gyroscope = new Fxas21002c(config)
     this.gyroscope.on('error', err => this.emit('error', err))
-    this.ahrs = new Ahrs({
-      sampleInterval: this.sampleRate,
-      algorithm: 'Madgwick',
-      beta: 0.1
-    })
   }
 
   get quaternion () {
@@ -38,6 +33,11 @@ module.exports = class AdafruitPrecisionNxp extends Device {
       clearInterval(this.sampleInterval)
       this.sampleInterval = setInterval(this.onsampleNeeded.bind(this), 1000 / this.sampleRate)
       this.lastUpdate = null
+      this.ahrs = new Ahrs({
+        sampleInterval: this.sampleRate,
+        algorithm: 'Madgwick',
+        beta: 0.1
+      })
       cb(err)
       this.emit('open')
     })
@@ -60,10 +60,10 @@ module.exports = class AdafruitPrecisionNxp extends Device {
     q.push(cb => this.accelerometer.read(cb))
     q.start(err => {
       if (err) return
-      var now = +new Date()
       var a = this.accelerometer.accelerometer
       var g = this.gyroscope.gyroscope
       var m = this.accelerometer.magnetometer
+      var now = +new Date()
       this.ahrs.update(
         g.x, g.y, g.z,
         a.x, a.y, a.z,
