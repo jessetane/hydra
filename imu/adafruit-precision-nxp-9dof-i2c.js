@@ -1,13 +1,14 @@
 var Device = require('../device')
 var Fxos8700cq = require('../imu/fxos8700cq')
 var Fxas21002c = require('../imu/fxas21002c')
-var Ahrs = require('ahrs')
+var Ahrs = require('./ahrs')
 var Queue = require('queue')
 
 module.exports = class AdafruitPrecisionNxp extends Device {
   constructor (config) {
     super()
     this.sampleRate = config.imu.sampleRate || 64
+    this.ahrsBeta = config.imu.ahrsBeta || 0.15
     this.accelerometer = new Fxos8700cq(config)
     this.accelerometer.on('error', err => this.emit('error', err))
     this.gyroscope = new Fxas21002c(config)
@@ -32,11 +33,11 @@ module.exports = class AdafruitPrecisionNxp extends Device {
     q.start(err => {
       clearInterval(this.sampleInterval)
       this.sampleInterval = setInterval(this.onsampleNeeded.bind(this), 1000 / this.sampleRate)
-      this.lastUpdate = null
+      this.lastUpdate = +new Date()
       this.ahrs = new Ahrs({
         sampleInterval: this.sampleRate,
         algorithm: 'Madgwick',
-        beta: 0.1
+        beta: 20
       })
       cb(err)
       this.emit('open')
@@ -64,6 +65,7 @@ module.exports = class AdafruitPrecisionNxp extends Device {
       var g = this.gyroscope.gyroscope
       var m = this.accelerometer.magnetometer
       var now = +new Date()
+      this.ahrs.beta = this.ahrs.beta > this.ahrsBeta ? this.ahrs.beta - 0.65 : this.ahrsBeta
       this.ahrs.update(
         g.x, g.y, g.z,
         a.x, a.y, a.z,
@@ -71,6 +73,7 @@ module.exports = class AdafruitPrecisionNxp extends Device {
         (now - (this.lastUpdate || now)) / 1000
       )
       this.lastUpdate = now
+      if (this.ahrs.beta != this.ahrsBeta) return
       this.emit('change', {
         quaternion: this.quaternion,
         eulerAngles: this.eulerAngles,
