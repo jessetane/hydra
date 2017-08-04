@@ -23,6 +23,7 @@ dom.addEventListener('wheel', evt => {
   camera.zoom = Math.min(camera.zoom, 200)
   camera.zoom = Math.max(camera.zoom, 1)
 })
+dom.addEventListener('click', run)
 camera.bindPointerEvents(dom)
 scene.start()
 
@@ -59,15 +60,21 @@ server.on('error', err => {
   console.error(err)
 })
 
-server.on('open', () => {
-  server.subscribe('sensors.imu.change', imu => {
-    plane.rotation = [
-      imu.quaternion.x,
-      imu.quaternion.y,
-      imu.quaternion.z,
-      imu.quaternion.w
-    ]
-  })
-})
+server.on('open', run)
 
 server.connect()
+
+function run () {
+  if (!server.connected) return
+  server.unsubscribe('sensors.imu.change', onchange)
+  server.subscribe('sensors.imu.change', onchange)
+}
+
+function onchange (imu) {
+  plane.rotation = [
+    imu.quaternion.x,
+    imu.quaternion.y,
+    imu.quaternion.z,
+    imu.quaternion.w
+  ]
+}
