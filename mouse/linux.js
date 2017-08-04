@@ -17,6 +17,20 @@ module.exports = class Mouse extends Device {
     })
   }
 
+  _close (cb) {
+    var fd = this.fileDescriptor
+    this.fileDescriptor = null
+    fs.close(fd, cb)
+  }
+
+  watchdog (cb) {
+    if (!this.fileDescriptor) {
+      cb(new Error('device not open'))
+    } else {
+      cb()
+    }
+  }
+
   poll () {
     var buffer = this.sampleBuffer
     fs.read(this.fileDescriptor, buffer, 0, 8, null, err => {
@@ -35,19 +49,5 @@ module.exports = class Mouse extends Device {
       this.emit('change', { x, y, buttons })
       this.poll()
     })
-  }
-
-  _close (cb) {
-    var fd = this.fileDescriptor
-    this.fileDescriptor = null
-    fs.close(fd, cb)
-  }
-
-  watchdog (cb) {
-    if (!this.fileDescriptor) {
-      cb(new Error('device not open'))
-    } else {
-      cb()
-    }
   }
 }
