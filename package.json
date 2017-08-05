@@ -20,7 +20,7 @@
     "serialport": "^4.0.7",
     "uws": "^8.14.0",
     "watchify": "^3.9.0",
-    "websocket-rpc": "github:jessetane/websocket-rpc#4.1.1"
+    "websocket-rpc": "github:jessetane/websocket-rpc#4.1.2"
   },
   "repository": "https://github.com/jessetane/hydra",
   "author": "jesse.tane@gmail.com",
