@@ -1,30 +1,36 @@
+* {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: rgba(0,0,0,0);
+  -webkit-text-size-adjust: 100%;
+  -webkit-print-color-adjust: exact;
+  color-adjust: exact;
+  flex-shrink: 0;
+}
+
+*:focus {
+  outline: none;
+}
+
 html, body {
-  position: relative;
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
   margin: 0;
   padding: 0;
-  width: 100%;
-  height: 100%;
   font-size: 16px;
+  font-weight: 400;
+  line-height: 1.4;
+  background-color: #FFF;
+  color: #333;
 }
 
-#wrapper {
-  overflow: hidden;
+ul {
+  margin: 0;
+  padding: 0;
 }
 
-#regl, #dom {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-}
-
-.thing {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  font-size: 10rem;
-  font-family: sans-serif;
-  color: #FFF;
-  background-color: rgba(255,0,0,0.5);
+li {
+  margin: 0;
+  padding: 0;
 }

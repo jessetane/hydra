@@ -1,5 +1,5 @@
 var I2cDevice = require('../device-i2c')
-var Ahrs = require('ahrs')
+var Ahrs = require('./ahrs')
 
 // datasheets
 // https://www.invensense.com/wp-content/uploads/2015/02/MPU-6000-Datasheet1.pdf
