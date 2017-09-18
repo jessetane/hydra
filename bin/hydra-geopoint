@@ -11,7 +11,7 @@ var target = config.geopoint.target || {
 }
 
 var WebSocket = require('uws')
-var Rpc = require('rpc-engine')
+var Rpc = require('rpc-events')
 var Queue = require('queue')
 
 var socket = new WebSocket(hydraUrl)

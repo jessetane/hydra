@@ -1,4 +1,4 @@
-var Rpc = require('websocket-rpc')
+var RpcWs = require('rpc-events-ws-client')
 var Scene3d = require('3d/scene')
 var Camera3d = require('3d/camera')
 var ReglRenderer = require('3d/regl-renderer')
@@ -47,21 +47,14 @@ var magnetometer = new Magnetometer()
 magnetometer.origin = [ 0.75, 0, 0 ]
 scene.addObject(magnetometer)
 
-var server = new Rpc({
+var server = new RpcWs({
   url: remote,
   serialize: JSON.stringify,
-  deserialize: JSON.parse,
-  methods: {
-    change: data => {
-      gyroscope.onchange(data.gyroscope)
-      accelerometer.onchange(data.accelerometer)
-      magnetometer.onchange(data.magnetometer)
-    }
-  }
+  deserialize: JSON.parse
 })
 
-server.onerror = err => {
-  console.error(err)
-}
-
-server.connect()
+server.subscribe('sensors.imu.change', data => {
+  gyroscope.onchange(data.gyroscope)
+  accelerometer.onchange(data.accelerometer)
+  magnetometer.onchange(data.magnetometer)
+})

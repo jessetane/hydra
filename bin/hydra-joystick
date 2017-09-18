@@ -12,7 +12,7 @@ var ptuMaxPanRate = config.ptu.maxPanRate || 12000
 var ptuMaxTiltRate = config.ptu.maxTiltRate || 12000
 
 var WebSocket = require('uws')
-var Rpc = require('rpc-engine')
+var Rpc = require('rpc-events')
 
 var socket = new WebSocket(hydraUrl)
 var mainLoop = null

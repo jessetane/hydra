@@ -11,7 +11,7 @@ var uartDevice = config.imuCalibrate.uartDevice
 
 var WebSocket = require('uws')
 var Uart = require('../device-uart')
-var Rpc = require('rpc-engine')
+var Rpc = require('rpc-events')
 
 var socket = new WebSocket(hydraUrl)
 

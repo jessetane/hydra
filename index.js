@@ -6,7 +6,7 @@ var port = config.port || 5566
 var address = config.address || '::'
 
 var ws = require('uws')
-var Rpc = require('rpc-engine')
+var Rpc = require('rpc-events')
 var Joystick = require('./joystick')
 var Mouse = require('./mouse')
 var Imu = require('./imu')
@@ -51,10 +51,10 @@ var websocketServer = new ws.Server({ port, host: address }, err => {
 
 websocketServer.on('connection', socket => {
   var client = new Rpc()
+  client.setInterface('sensors', sensors)
+  client.setInterface('actuators', actuators)
   client.id = `${socket.remoteAddress}:${socket.remotePort}`
   clients[client.id] = client
-  client.feeds.sensors = sensors
-  client.methods.actuators = actuators
   client.serialize = JSON.stringify
   client.deserialize = JSON.parse
   client.send = socket.send.bind(socket)

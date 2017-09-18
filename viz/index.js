@@ -1,4 +1,4 @@
-var Rpc = require('websocket-rpc')
+var Rpc = require('rpc-events-ws-client')
 var Scene3d = require('3d/scene')
 var Camera3d = require('3d/camera')
 var ReglRenderer = require('3d/regl-renderer')
@@ -56,25 +56,12 @@ var server = new Rpc({
   deserialize: JSON.parse
 })
 
-server.on('error', err => {
-  console.error(err)
-})
-
-server.on('open', run)
-
-server.connect()
-
-function run () {
-  if (!server.connected) return
-  server.unsubscribe('sensors.imu.change', onchange)
-  server.subscribe('sensors.imu.change', onchange)
-}
-
-function onchange (imu) {
+server.subscribe('sensors.joystick.change', imu => {
+  // console.log(imu)
   plane.rotation = [
     imu.quaternion.x,
     imu.quaternion.y,
     imu.quaternion.z,
     imu.quaternion.w
   ]
-}
+})
